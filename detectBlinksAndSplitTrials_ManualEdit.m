@@ -3,7 +3,7 @@ snums       = [1:26 2001:2026];  % Subject numbers - check these!!
 figFlag     = 1;   % Draw a pretty figure or not...
 
 % Loop over subjects
-for n = 1:numel(snums)
+for n = 5 % 21:26
     sName       = sprintf('Photic%04d',snums(n));   % Subject name e.g. Photic0001, Photic2015 etc
     sDir        = fullfile(root_folder,sName);          % Directory name for each subject
 
@@ -36,9 +36,9 @@ for n = 1:numel(snums)
     load(trlDefFname);                                                % ...and load it
 
     if nicoletFlag
-        trl = round(trl./(500/256));  % Convert from 500Hz sampling to 256Hz
+        trl = round(trl./(500/256)); % Convert from 500Hz sampling to 256Hz, rounding up
     else
-        trl = round(trl);
+        trl = round(trl); % Round up trial lengths for XLTEK, adjust as needed
     end
 
     % Establish the time window of interest in seconds
@@ -165,32 +165,48 @@ for n = 1:numel(snums)
     end
 
     % Identifying the indices that fall within the "eyes open" and "eyes closed" periods
-    % eyesOpenIndices = find(trl(:, 2) < blinkOnsInd); % Indices before the blink onset
-    % eyesClosedIndices = find(trl(:, 1) > blinkOffsetInd); % Indices after the blink offset
+    eyesOpenIndices = find(trl(:, 2) < blinkOnsInd); % Indices before the blink onset
+    eyesClosedIndices = find(trl(:, 1) > blinkOffsetInd); % Indices after the blink offset
+
+    % ATTEMPTS TO FIX
+    % eyesOpenIndices = find(tb >= tb(min(trl(:, 1))) & tb <= tb(min(trl(:, 1))) + (blinkOnsInd - 1) / fs); % Indices from the start to blink onset
+    % eyesClosedIndices = find(tb >= tb(min(trl(:, 1))) + (blinkOffsetInd + 1) / fs & tb <= tb(max(trl(:, 2)))); % Indices from blink offset to the end
+
+    if nicoletFlag
+        load(trlDefFname,'trl');            % Reload the original trial definition matrix
+    end
 
     % Using these indices to extract the trial definitions for eyes open and eyes closed periods
-    % eyesOpenTrl = trl(eyesOpenIndices, :);
-    % eyesClosedTrl = trl(eyesClosedIndices, :);
+    eyesOpenTrl = trl(eyesOpenIndices, :);
+    eyesClosedTrl = trl(eyesClosedIndices, :);
 
     % For "eyes open"
     % Assuming you need to replace "conditionlabel" and "conditionlabels" based on your specific requirements
-    % openTrialdef = struct('conditionlabel', '6HzFlash', 'eventtype', 'Stimulus', 'eventvalue', 1, 'trlshift', 0);
-    % openConditionLabels = repmat({'6HzFlash'}, 1, size(eyesOpenTrl, 1));
+    openTrialdef = struct('conditionlabel', '6HzFlash', 'eventtype', 'Stimulus', 'eventvalue', 1, 'trlshift', 0);
+    openConditionLabels = repmat({'6HzFlash'}, 1, size(eyesOpenTrl, 1));
 
     % For "eyes closed"
     % Again, change "conditionlabel" and "conditionlabels" accordingly
-    % closedTrialdef = struct('conditionlabel', '6HzFlash', 'eventtype', 'Stimulus', 'eventvalue', 1, 'trlshift', 0);
-    % closedConditionLabels = repmat({'6HzFlash'}, 1, size(eyesClosedTrl, 1));
+    closedTrialdef = struct('conditionlabel', '6HzFlash', 'eventtype', 'Stimulus', 'eventvalue', 1, 'trlshift', 0);
+    closedConditionLabels = repmat({'6HzFlash'}, 1, size(eyesClosedTrl, 1));
 
     % Assuming the edfName variable contains the name of the EDF file
-    % [~, edfFilename, ~] = fileparts(edfName);
+    [~, edfFilename, ~] = fileparts(edfName);
 
     % Saving the open trial definition in the EDF file's directory
-    % openTrialdefFilename = fullfile(sDir, ['trialdef_170_eyes_open_', edfFilename, '.mat']);
-    % save(openTrialdefFilename, 'eyesOpenTrl', 'openTrialdef', 'timewin', 'openConditionLabels', 'source');
+    openTrialdefFilename = fullfile(sDir, ['trialdef_170_eyes_open_', edfFilename, '.mat']);
+    save(openTrialdefFilename, 'eyesOpenTrl', 'openTrialdef', 'timewin', 'openConditionLabels', 'source');
 
     % Saving the closed trial definition in the EDF file's directory
-    % closedTrialdefFilename = fullfile(sDir, ['trialdef_170_eyes_closed_', edfFilename, '.mat']);
-    % save(closedTrialdefFilename, 'eyesClosedTrl', 'closedTrialdef', 'timewin', 'closedConditionLabels', 'source');
+    closedTrialdefFilename = fullfile(sDir, ['trialdef_170_eyes_closed_', edfFilename, '.mat']);
+    save(closedTrialdefFilename, 'eyesClosedTrl', 'closedTrialdef', 'timewin', 'closedConditionLabels', 'source');
 
+    % Combining eyesOpen and eyesClosed values
+    combinedTrialdef = struct('conditionlabel', '6HzFlash', 'eventtype', 'Stimulus', 'eventvalue', 1, 'trlshift', 0);
+    combinedTrl = [eyesOpenTrl; eyesClosedTrl];
+    combinedConditionLabels = [openConditionLabels, closedConditionLabels];
+    
+    % Saving the combined trial definition in the EDF file's directory
+    combinedTrialdefFilename = fullfile(sDir, ['trialdef_170_combined_', edfFilename, '.mat']);
+    save(combinedTrialdefFilename, 'combinedTrl', 'combinedTrialdef', 'timewin', 'combinedConditionLabels', 'source');
 end

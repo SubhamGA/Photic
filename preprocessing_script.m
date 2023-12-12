@@ -34,7 +34,7 @@ start_index = 1; % Change this to the desired starting index
 
 %% 
 % Loop through each subject folder and apply preprocessing steps
-for i = 1 %start_index:numel(subject_folders)
+for i = 5 % start_index:numel(subject_folders)
     subject_folder_name = subject_folders(i).name; % Get the subject folder name 
 
     % Now, you need to locate the subject-specific EDF file in the subject folder.
@@ -65,9 +65,17 @@ for i = 1 %start_index:numel(subject_folders)
     % Define your channel selection logic here
     if ~nicoletFlag
         S.channels = channelX.label;
+        S.prefix = 'EC'; % EC noFP
         D = spm_eeg_convert(S);
     else
-        S.channels = channelN.label;
+        S1 = [];
+        S1.mode           = 'header';
+        S1.dataset        = S.dataset;
+        S.prefix = 'EC'; % EC noFP
+        Dhdr = spm_eeg_convert(S1);
+        % Now import only the channels we want (skip Fp1/Fp2 which are the
+        % first two and all those after 21 (Oz/Photic/EDF)
+        S.channels = Dhdr.chanlabels(3:21);
         D = spm_eeg_convert(S);
     end
     
@@ -100,7 +108,7 @@ for i = 1 %start_index:numel(subject_folders)
             % use_refN_montage = false; % Set a flag to indicate using refX montage
         else
             % If an error occurs, use the mod channel
-            S.channels = channelN.label;
+            S.channels = Dhdr.chanlabels(3:21);
             % use_refN_montage = true; % Set a flag to indicate using refN montage
         end
         S.blocksize = D.nsamples * D.nchannels;
@@ -112,15 +120,12 @@ for i = 1 %start_index:numel(subject_folders)
         S.mode = 'continuous';
         D = spm_eeg_convert(S);
 
-        outputFile = fullfile(outputFolder, ['spmeeg_EC_170_' subject_name, '.dat']);
-        save(outputFile, 'D');
-
         % Preprocessing Step 2: Resample to 500
         S = [];
         S.D = fullfile(D.fname);
         S.fsample_new = 500;
         S.method = 'resample';
-        S.prefix = 'u';
+        S.prefix = 'uEC';
         D = spm_eeg_downsample(S);
 
         % Preprocessing Step 3: Montage
@@ -130,7 +135,7 @@ for i = 1 %start_index:numel(subject_folders)
         % Define your montage logic here
         if nicoletFlag 
             % Use the refN montage
-            S.montage = refN.montage;
+            S.montage = refN.refN.montage;
         else
             % Use refX montage
             S.montage = refX.montage;
@@ -216,6 +221,17 @@ for i = 1 %start_index:numel(subject_folders)
         S.trim = 0;
         D = spm_eeg_average(S);
 
+        % Preprocessing Step 6: Filter (Low-pass)
+        S = [];
+        S.D = fullfile(D.fname);
+        S.type = 'butterworth';
+        S.band = 'low';
+        S.freq = 30;
+        S.dir = 'twopass';
+        S.order = 5;
+        S.prefix = 'f';
+        D = spm_eeg_filter(S);
+
 % Change the current directory back to the root folder
     cd('/Users/rick2/Documents/MATLAB/Winston_Lab/Photic/Code/EEGUI'); %Script finds it hard to find and use functions from the EEGUI folder unless it is cd'd to for the start of the next subject
 
@@ -236,7 +252,7 @@ for i = start_index:numel(subject_folders)
 
     % Now, you need to locate the subject-specific processed .mat file
     % Assuming that the processed .mat file starts with 'effMuspmeeg_' followed by the subject name:
-    subject_file_pattern = ['meffMuspmeeg_noFP_170_' subject_folder_name '.mat'];
+    subject_file_pattern = ['meffMuEOspmeeg_' subject_folder_name '.mat'];
     subject_files = dir(fullfile(root_folder, 'Data', subject_folder_name, subject_file_pattern));
 
     if ~isempty(subject_files)
@@ -249,7 +265,7 @@ for i = start_index:numel(subject_folders)
             % Continue with image conversion for the subject using subject_file
             S = [];
             S.D = subject_file;
-            S.mode = 'scalp'; %scalp time
+            S.mode = 'scalp x time'; %scalp time
             S.conditions = {};
             S.timewin = [-Inf Inf];
             S.freqwin = [-Inf Inf];

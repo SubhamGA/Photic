@@ -1,21 +1,48 @@
 % Script to compute mean and standard deviation and create a line graph
 
+basePath = 'C:\Users\rick2\Documents\MATLAB\Winston_Lab\Photic\Data\'; %Photic0001\weffMunoFPspmeeg_Photic0001\condition_EO_effectRep3.nii,1';
+% C:\Users\rick2\Documents\MATLAB\Winston_Lab\Photic\Data\Photic0001\meffMunoFPspmeeg_Photic0001.mat
+% C:\Users\rick2\Documents\MATLAB\Winston_Lab\Photic\Data\Photic0001\tmeffMunoFPspmeeg_Photic0001\condition_6HzFlash.nii,1
+% C:\Users\rick2\Documents\MATLAB\Winston_Lab\Photic\Data\Photic0001\meffMunoFPspmeeg_Photic0001_1_t-20_150_f_1.nii,1
+% C:\Users\rick2\Documents\MATLAB\Winston_Lab\Photic\Data\Photic0001\weffMunoFPspmeeg_Photic0001\condition_EffectRep3.nii,1
+% Initialize a cell array to store the paths
+% allPaths = cell(53, 1);
+
+% Loop through numbers 1 to 26 and 2000 to 2026
+grpA = 1:26;
+grpB = 2001:2026;
+grpAfiles = [];
+grpBfiles = [];
+condName = 'condition_EffectRep0';
+for i = grpA
+    sName = sprintf('Photic%04d',i);
+    fname = fullfile(basePath,sName,sprintf('weffMunoFPspmeeg_%s',sName),sprintf('%s.nii,1',condName));
+    grpAfiles = strvcat(grpAfiles,fname);
+end
+
+for i = grpB
+    sName = sprintf('Photic%04d',i);
+    fname = fullfile(basePath,sName,sprintf('weffMunoFPspmeeg_%s',sName),sprintf('%s.nii,1',condName));
+    grpBfiles = strvcat(grpBfiles,fname);
+end
+
+
 % First script to compute mean and standard deviation
 baseDir = pwd;  % Change this to your base directory
 
-% Example: Assuming you have two groups, Group A and Group B
-fnamesGroupA = spm_select(inf, 'image', 'Select images for Group A', [], baseDir);
-fnamesGroupB = spm_select(inf, 'image', 'Select images for Group B', [], baseDir);
+% % Example: Assuming you have two groups, Group A and Group B
+% fnamesGroupA = spm_select(inf, 'image', 'Select images for Group A', [], baseDir);
+% fnamesGroupB = spm_select(inf, 'image', 'Select images for Group B', [], baseDir);
 
 % Read image headers and information for Group A
-VGroupA = spm_vol(fnamesGroupA);
+VGroupA = spm_vol(grpAfiles);
 YGroupA = spm_read_vols(VGroupA);
 stdDataGroupA = std(YGroupA, 0, 4);
 meanDataGroupA = mean(YGroupA, 4);
 sampleSizeGroupA = numel(VGroupA);
 
 % Read image headers and information for Group B
-VGroupB = spm_vol(fnamesGroupB);
+VGroupB = spm_vol(grpBfiles);
 YGroupB = spm_read_vols(VGroupB);
 stdDataGroupB = std(YGroupB, 0, 4);
 meanDataGroupB = mean(YGroupB, 4);
@@ -87,7 +114,12 @@ title('Average Voltage Over Time with Standard Error (Groups A and B)')
 
 % Add legend with explicit line styles and colors
 % legend('Group A - Mean', 'Group A - Standard Deviation', 'Group B - Standard Deviation', 'Group B - Mean', 'Location', 'Best')
-legend('Group A - Mean', 'Group A - Standard Error', 'Group B - Mean', 'Group B - Standard Error', 'Location', 'Best')
+legend('Photic - Mean', 'Photic - Standard Error', 'Non-Photic - Mean', 'Non-Photic - Standard Error', 'Location', 'Best')
 
 % Adjust other plot properties as needed
 grid on
+
+dataA = squeeze(YGroupA(19,3,:,:));
+dataB = squeeze(YGroupB(19,3,:,:));
+[H,P] = ttest2(dataA',dataB');
+fprintf('number of significant differences at p<0.05 = %d\n',numel(find(P<0.05)))

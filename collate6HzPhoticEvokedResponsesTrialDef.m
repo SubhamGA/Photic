@@ -143,7 +143,7 @@ for i = 1:numel(finalFilenames)    % I like numel ("number of elements") rather 
         epochStartTimes = allFlashTimes(blkInd == blkToTestInd); % defining epoch start time in relation to flashtimes
         baselineSamp = 0.02 * fs;
         epochStartSamp = epochStartTimes * fs - baselineSamp;
-        epochEndSamp = round(epochStartSamp + (0.02 + 0.15) * fs);
+        epochEndSamp = (epochStartSamp + (0.02 + 0.15) * fs);
         trl = [epochStartSamp' epochEndSamp' -repmat(baselineSamp, numel(epochStartSamp), 1)];
 
         trialdef = struct('conditionlabel', '6HzFlash', 'eventtype', 'Stimulus', 'eventvalue', 1, 'trlshift', 0);
